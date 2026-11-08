@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f6b5c">
+<title>Вороничи, магазин</title>
+<style>
+/* Layout: одна колонка-табло; сверху маршрут и дни недели, ниже список рейсов как остановочное табло */
+:root{
+  --bg:#eef2f1; --surface:#ffffff; --fg:#14211f; --muted:#5b6b68; --line:#d5dedb;
+  --accent:#0f6b5c; --accent-ink:#ffffff; --next:#f2b705; --next-ink:#2a2100; --warn:#c2410c; --warn-bg:#fdeee6;
+  --f-display:"Unbounded","Rubik",system-ui,sans-serif;
+  --f-body:"Rubik",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"Consolas",monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1716; --surface:#172220; --fg:#e6efed; --muted:#93a5a1; --line:#283633;
+  --accent:#3fb39d; --accent-ink:#06201b; --next:#f2b705; --next-ink:#2a2100; --warn:#fb923c; --warn-bg:#3a2216; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1716; --surface:#172220; --fg:#e6efed; --muted:#93a5a1; --line:#283633;
+  --accent:#3fb39d; --accent-ink:#06201b; --next:#f2b705; --next-ink:#2a2100; --warn:#fb923c; --warn-bg:#3a2216; color-scheme:dark}
+
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.45}
+.wrap{max-width:620px;margin:0 auto;padding-block:20px 40px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:18px}
+
+header{display:flex;flex-direction:column;gap:6px}
+.stop{display:flex;align-items:center;gap:10px}
+.sign{flex:none;width:36px;height:36px;border-radius:6px;background:var(--accent);color:var(--accent-ink);
+  display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:18px}
+h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(20px,5.2vw,26px);line-height:1.15;text-wrap:balance}
+h1 .arr{color:var(--accent)}
+.sub{color:var(--muted);font-size:14px}
+
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.day{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--fg);
+  border-radius:10px;padding:12px 0;font:inherit;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+.day b{font-family:var(--f-display);font-weight:500;font-size:14px}
+.day small{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.day[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.day[aria-pressed="true"] small{color:var(--accent-ink);opacity:.8}
+.day.today:not([aria-pressed="true"]){border-color:var(--accent)}
+.day:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.summary{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;
+  font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.summary strong{color:var(--fg);font-weight:600}
+
+.board{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.trip{display:grid;grid-template-columns:auto 1fr auto;gap:4px 14px;align-items:center;padding:14px 16px;border-top:1px solid var(--line)}
+.trip:first-child{border-top:0}
+.dep{font-family:var(--f-mono);font-weight:700;font-size:26px;font-variant-numeric:tabular-nums;letter-spacing:-.01em;line-height:1}
+.info{min-width:0;display:flex;flex-direction:column;gap:2px}
+.route{font-weight:500;overflow-wrap:anywhere}
+.arrive{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.num{font-family:var(--f-mono);font-weight:700;font-size:13px;padding:4px 8px;border-radius:6px;
+  border:1.5px solid var(--accent);color:var(--accent);white-space:nowrap;justify-self:end}
+.tag{grid-column:2 / 4;justify-self:start;font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;
+  background:var(--next);color:var(--next-ink)}
+.warn{grid-column:1 / 4;font-size:13px;font-weight:500;color:var(--warn);background:var(--warn-bg);
+  border-radius:8px;padding:6px 10px;display:flex;gap:8px;align-items:flex-start}
+.warn::before{content:"!";flex:none;width:18px;height:18px;border-radius:50%;background:var(--warn);color:var(--warn-bg);
+  display:grid;place-items:center;font-weight:700;font-size:12px;line-height:1}
+.trip.detour{box-shadow:inset 4px 0 0 var(--warn)}
+.trip.past{opacity:.42}
+.trip.next{background:color-mix(in srgb,var(--next) 14%,var(--surface))}
+.trip.next .dep{color:var(--fg)}
+
+h2{margin:6px 0 0;font-family:var(--f-display);font-weight:500;font-size:17px;display:flex;align-items:center;gap:8px}
+h2 .arr{color:var(--accent)}
+.empty{padding:28px 16px;text-align:center;color:var(--muted)}
+.note{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:6px;max-width:65ch}
+.note .tel{font-family:var(--f-mono);color:var(--fg);user-select:all}
+
+@media (max-width:380px){.dep{font-size:22px}.trip{gap:4px 10px;padding:12px}}
+@media (prefers-reduced-motion:no-preference){.trip{transition:opacity .2s}}
+</style>
+<style>:root{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0;font-size:15px}</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="stop">
+      <div class="sign" aria-hidden="true">А</div>
+      <h1>Вороничи, магазин</h1>
+    </div>
+    <div class="sub">Время автобуса у остановки «Магазин»</div>
+  </header>
+
+  <nav class="days" id="days" aria-label="День недели"></nav>
+
+  <div class="summary"><span id="dayTitle"></span></div>
+
+  <h2>Полоцк <span class="arr">→</span> Вороничи</h2>
+  <div class="summary"><span>Отправление с автовокзала Полоцка</span><span id="count"></span></div>
+  <ul class="board" id="board"></ul>
+
+  <h2>Вороничи <span class="arr">→</span> Полоцк</h2>
+  <div class="summary"><span>Отправление от магазина</span><span id="count2"></span></div>
+  <ul class="board" id="board2"></ul>
+
+  <div class="note">
+    <span>Из Полоцка: отправление с автовокзала по расписанию автопарка, время у магазина по Яндекс Картам. В Полоцк: отправление от магазина по табличке автопарка на остановке.</span>
+    <span>Рейсы с оранжевой пометкой в этот день заезжают в Старинки.</span>
+    <span>Расписание может меняться в праздники.</span>
+    <span>Диспетчерская автовокзала Полоцка: <span class="tel">8 0214 46-32-48</span></span>
+  </div>
+</div>
+
+<script>
+// Время у остановки «Магазин», Вороничи. Источник: Яндекс Карты, стопы 1912843171 (к Ушачам) и 3844193180 (к Полоцку).
+// 1=пн … 7=вс. Третий элемент — заезд в Старинки (1) или время отправления с остановки «Школа» (Яндекс Карты, стоп 3844195270).
+const R = {
+  "227":     "Полоцк – Ушачи",
+  "351":     "Полоцк – Ушачи",
+  "227/284": "Полоцк – Ушачи – Кубличи",
+  "250":     "Полоцк – Ухвище",
+  "228":     "Полоцк – Близница",
+};
+const RB = {
+  "227":     "Ушачи – Полоцк",
+  "351":     "Ушачи – Полоцк",
+  "227/284": "Кубличи – Ушачи – Полоцк",
+  "250":     "Ухвище – Полоцк",
+  "228":     "Близница – Полоцк",
+};
+const TO = { // [отправление из Полоцка (автопарк), №, заезд в Старинки, у магазина (Яндекс)]
+  1:[["06:15","250",0,"06:56"],["06:40","227",0,"07:31"],["12:00","351",0,"12:51"],["14:15","250",0,"14:56"],["14:40","227",0,"15:31"],["16:00","351",0,"16:51"],["18:20","228",0,"19:01"]],
+  2:[["06:15","250",0,"06:56"],["06:40","227",0,"07:31"],["12:00","351",0,"12:51"],["14:15","250",0,"14:56"],["14:40","227",0,"15:31"],["16:00","351",0,"16:51"],["18:20","228",0,"19:01"]],
+  3:[["06:15","250",0,"06:56"],["06:40","227",0,"07:31"],["12:00","351",0,"12:51"],["14:15","250",1,"15:43"],["14:40","227",0,"15:31"],["16:00","351",0,"16:51"],["18:20","228",0,"19:01"]],
+  4:[["06:15","250",0,"06:56"],["06:40","227",0,"07:31"],["12:00","351",0,"12:51"],["14:15","250",0,"14:56"],["14:40","227",0,"15:31"],["16:00","351",0,"16:51"],["18:20","228",0,"19:01"]],
+  5:[["06:15","250",0,"06:56"],["06:40","227/284",0,"07:32"],["12:00","351",0,"12:51"],["14:15","250",0,"14:59"],["14:40","227/284",0,"15:32"],["16:00","351",0,"16:51"],["18:20","250",0,"19:01"]],
+  6:[["06:15","250",0,"06:56"],["06:40","227/284",0,"07:32"],["11:00","228",0,"11:41"],["12:00","351",0,"12:51"],["14:15","250",0,"14:56"],["14:40","227/284",0,"15:32"],["16:00","351",0,"16:51"]],
+  7:[["06:15","250",0,"06:56"],["06:40","227/284",0,"07:32"],["11:00","228",1,"12:20"],["12:00","351",0,"12:51"],["14:40","227/284",0,"15:32"],["16:00","351",0,"16:51"],["17:20","250",0,"18:04"]],
+};
+const BACKD = { // по табличке автопарка на остановке
+  1:[["08:00","250"],["09:02","351"],["10:21","227"],["14:52","351"],["16:15","250"],["18:11","227"],["19:14","228"]],
+  2:[["08:00","250"],["09:02","351"],["10:21","227"],["14:52","351"],["16:15","250"],["18:11","227"],["19:14","228"]],
+  3:[["08:00","250","08:48"],["09:02","351"],["10:21","227"],["14:52","351"],["16:40","250","16:41"],["18:11","227"],["19:14","228"]],
+  4:[["08:00","250"],["09:02","351"],["10:21","227"],["14:52","351"],["16:15","250"],["18:11","227"],["19:14","228"]],
+  5:[["08:15","250"],["09:02","351"],["10:11","227/284"],["14:52","351"],["16:15","250"],["18:11","227/284"],["19:57","250"]],
+  6:[["08:00","250"],["09:02","351"],["10:11","227/284"],["11:49","228","12:31"],["14:52","351"],["16:15","250"],["18:11","227/284"]],
+  7:[["08:15","250"],["09:02","351"],["10:11","227/284"],["12:30","228"],["14:52","351"],["18:11","227/284"],["19:20","250"]],
+};
+const SHORT = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
+const FULL  = ["Понедельник","Вторник","Среда","Четверг","Пятница","Суббота","Воскресенье"];
+const MON   = ["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"];
+
+const now = new Date();
+const todayIdx = (now.getDay()+6)%7 + 1;
+let sel = todayIdx;
+
+const toMin = t => { const [h,m]=t.split(":").map(Number); return h*60+m; };
+function plural(n){const a=n%10,b=n%100;if(a===1&&b!==11)return"рейс";if(a>=2&&a<=4&&(b<12||b>14))return"рейса";return"рейсов";}
+function dateFor(idx){ const d=new Date(now); d.setDate(now.getDate()+((idx-todayIdx+7)%7)); return d; }
+
+function renderDays(){
+  const box=document.getElementById("days"); box.innerHTML="";
+  for(let i=1;i<=7;i++){
+    const d=dateFor(i);
+    const b=document.createElement("button");
+    b.type="button"; b.id="day-"+i; b.className="day"+(i===todayIdx?" today":"");
+    b.setAttribute("aria-pressed", String(i===sel));
+    b.innerHTML=`<b>${SHORT[i-1]}</b>`;
+    b.addEventListener("click",()=>{sel=i;render();});
+    box.appendChild(b);
+  }
+}
+
+function fillBoard(boardId,countId,rows,names){
+  const list=[...rows].sort((a,b)=>toMin(a[0])-toMin(b[0]));
+  const isToday = sel===todayIdx;
+  const cur=new Date(); const nowMin=cur.getHours()*60+cur.getMinutes();
+  let nextFound=false;
+  document.getElementById(countId).textContent=`${list.length} ${plural(list.length)}`;
+  const board=document.getElementById(boardId); board.innerHTML="";
+  for(const [t,n,st,arr] of list){
+    const li=document.createElement("li"); li.className="trip"+(st?" detour":"");
+    let tag="";
+    if(isToday){
+      const dm=toMin(t);
+      if(dm<nowMin) li.classList.add("past");
+      else if(!nextFound){
+        nextFound=true; li.classList.add("next");
+        const left=dm-nowMin, h=Math.floor(left/60), m=left%60;
+        tag=`<span class="tag">Ближайший · через ${h?h+" ч ":""}${m} мин</span>`;
+      }
+    }
+    li.innerHTML=`<span class="dep">${t}</span>
+      <div class="info"><span class="route">${names[n]}</span>${arr?`<span class="arrive">у магазина в Вороничах ${arr}</span>`:""}</div>
+      <span class="num">№ ${n}</span>${tag}${st?`<span class="warn">В этот день рейс заезжает в Старинки.${typeof st==="string"?` С остановки «Школа» отправляется в <b>${st}</b>, оттуда можно ехать в Полоцк.`:""}</span>`:""}`;
+    board.appendChild(li);
+  }
+  if(isToday && !nextFound){
+    const li=document.createElement("li"); li.className="empty";
+    li.textContent="Сегодня рейсов больше нет. Выбери завтрашний день.";
+    board.appendChild(li);
+  }
+}
+
+function render(){
+  renderDays();
+  document.getElementById("dayTitle").innerHTML=`<strong>${FULL[sel-1]}</strong>${sel===todayIdx?" · сегодня":""}`;
+  fillBoard("board","count",TO[sel],R);
+  fillBoard("board2","count2",BACKD[sel],RB);
+}
+render();
+setInterval(()=>{ if(sel===todayIdx) render(); }, 60000);
+</script>
+
+</body>
+</html>
